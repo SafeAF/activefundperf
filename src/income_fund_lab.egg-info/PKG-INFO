@@ -1,0 +1,13 @@
+Metadata-Version: 2.4
+Name: income-fund-lab
+Version: 0.1.0
+Summary: Data collection and archival for actively managed income ETFs
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: requests>=2.31
+Requires-Dist: beautifulsoup4>=4.12
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+
+# activefundperf
+monitor some actively managed income etfs for performance

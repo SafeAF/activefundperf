@@ -1,0 +1,4 @@
+trade_date,fund,security,side,quantity,price,description
+2026-10-13,CHPY,SMCI,buy,100,36.50,Buy 100 shares
+2026-10-13,CHPY,AMD,sell,-25,154.20,Short sale
+2026-10-13,CHPY,AAPL,buy,50,220.10,Buy 50 shares

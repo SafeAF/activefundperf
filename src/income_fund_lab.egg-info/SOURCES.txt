@@ -1,0 +1,11 @@
+README.md
+pyproject.toml
+src/income_fund_lab/__init__.py
+src/income_fund_lab/collect.py
+src/income_fund_lab/collectors.py
+src/income_fund_lab.egg-info/PKG-INFO
+src/income_fund_lab.egg-info/SOURCES.txt
+src/income_fund_lab.egg-info/dependency_links.txt
+src/income_fund_lab.egg-info/requires.txt
+src/income_fund_lab.egg-info/top_level.txt
+tests/test_collectors.py

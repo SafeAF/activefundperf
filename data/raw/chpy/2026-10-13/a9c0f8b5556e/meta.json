@@ -1,0 +1,10 @@
+{
+  "fund": "CHPY",
+  "records_count": 90,
+  "resolved_url": "https://yieldmaxetfs.com/wp-content/uploads/funds/CHPY/TidalFG_Holdings_CHPY.csv",
+  "retrieval_timestamp_utc": "2026-10-13T16:38:03Z",
+  "sha256": "a9c0f8b5556ea737d82d3ddf5fd013e455f3373462af99c0a49399ee4a8b17b5",
+  "source_as_of_date": "2026-10-13",
+  "source_type": "holdings",
+  "source_url": "https://yieldmaxetfs.com/our-etfs/chpy/"
+}
