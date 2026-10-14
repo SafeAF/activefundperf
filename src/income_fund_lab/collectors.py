@@ -132,7 +132,7 @@ def parse_usoy_html(html: str, source_url: str) -> dict[str, Any]:
     as_of = _as_iso_date(as_of_match.group(1)) if as_of_match else None
 
     records: list[dict[str, Any]] = []
-    for row in rows:
+    for source_row_number, row in enumerate(rows, start=2):
         cells = row.find_all("td")
         if len(cells) < 5:
             continue
@@ -144,6 +144,7 @@ def parse_usoy_html(html: str, source_url: str) -> dict[str, Any]:
         quantity = int(shares) if shares is not None and float(shares).is_integer() else shares
         option = _parse_option_descriptor(security_name)
         record = {
+            "source_row_number": source_row_number,
             "fund": "USOY",
             "source_as_of_date": as_of,
             "security_name": security_name,
@@ -183,12 +184,13 @@ def parse_chpy_holdings_csv(csv_text: str) -> dict[str, Any]:
 
     source_as_of = None
     records: list[dict[str, Any]] = []
-    for row in rows:
+    for source_row_number, row in enumerate(rows, start=2):
         if not row or not any((value or "").strip() for value in row.values()):
             continue
         date = row.get("Date")
+        row_source_date = _as_iso_date(date)
         if source_as_of is None:
-            source_as_of = _as_iso_date(date)
+            source_as_of = row_source_date
         security_name = _flatten_text(row.get("SecurityName"))
         ticker = _flatten_text(row.get("StockTicker"))
         cusip = _flatten_text(row.get("CUSIP"))
@@ -200,8 +202,9 @@ def parse_chpy_holdings_csv(csv_text: str) -> dict[str, Any]:
         option = _parse_option_descriptor(security_name)
         asset_type = "option" if option["option_underlying"] else "security"
         record = {
+            "source_row_number": source_row_number,
             "fund": _flatten_text(row.get("Account")) or "CHPY",
-            "source_as_of_date": source_as_of,
+            "source_as_of_date": row_source_date,
             "security_name": security_name,
             "ticker": ticker,
             "CUSIP": cusip,
@@ -223,6 +226,34 @@ def parse_chpy_holdings_csv(csv_text: str) -> dict[str, Any]:
     return {"fund": "CHPY", "source_as_of_date": source_as_of, "records": records}
 
 
+def _normalize_trade_side(value: Any) -> tuple[str | None, str | None]:
+    text = _flatten_text(value).upper()
+    if not text:
+        return None, None
+
+    aliases = {
+        "B": "buy",
+        "BUY": "buy",
+        "BC": "buy",
+        "BUY TO CLOSE": "buy",
+        "S": "sell",
+        "SELL": "sell",
+        "SS": "sell",
+        "SELL SHORT": "sell",
+        "SHORT SALE": "sell",
+        "SHORT": "sell",
+    }
+    normalized = aliases.get(text)
+    if normalized is not None:
+        return normalized, text
+    lookup = text.replace("_", " ").strip()
+    if lookup in {"BUY", "BUY TO CLOSE", "LONG"}:
+        return "buy", text
+    if lookup in {"SELL", "SELL SHORT", "SHORT SALE", "SHORT", "SELL TO OPEN"}:
+        return "sell", text
+    return lookup.lower() if lookup else None, text
+
+
 def parse_chpy_trade_csv(csv_text: str) -> dict[str, Any]:
     reader = csv.DictReader(io.StringIO(csv_text))
     if reader.fieldnames is None:
@@ -233,25 +264,31 @@ def parse_chpy_trade_csv(csv_text: str) -> dict[str, Any]:
 
     fund = None
     records: list[dict[str, Any]] = []
-    for row in rows:
+    for source_row_number, row in enumerate(rows, start=2):
         if not row or not any((value or "").strip() for value in row.values()):
             continue
         trade_date = row.get("trade_date") or row.get("Date") or row.get("TradeDate")
         security = row.get("security") or row.get("Security") or row.get("Ticker") or row.get("StockTicker")
-        side = (row.get("side") or row.get("Side") or "").strip().lower()
-        qty = _parse_quantity(row.get("quantity") or row.get("Quantity"))
-        price = _parse_quantity(row.get("price") or row.get("Price"))
+        raw_side_value = row.get("side") or row.get("Side") or row.get("Type") or row.get("type")
+        normalized_side, raw_side = _normalize_trade_side(raw_side_value)
+        if normalized_side is None:
+            normalized_side = (row.get("side") or row.get("Side") or "").strip().lower()
+        qty = _parse_quantity(row.get("quantity") or row.get("Quantity") or row.get("Qty/Par Value") or row.get("qty") or row.get("Qty"))
+        price = _parse_quantity(row.get("price") or row.get("Price") or row.get("Exec Price") or row.get("exec_price"))
         if qty is None:
             raise ValueError(f"Missing quantity in CHPY trade: {row}")
-        if side in {"sell", "short", "short sale"} and qty > 0:
+        if normalized_side in {"sell", "short", "short sale", "sell short"} and qty > 0:
             qty *= -1
+        row_fund = (row.get("fund") or row.get("Fund") or row.get("Account") or fund or "CHPY").strip().upper()
         if fund is None:
-            fund = (row.get("fund") or row.get("Fund") or row.get("Account") or "CHPY").strip().upper()
+            fund = row_fund
         records.append({
+            "source_row_number": source_row_number,
             "trade_date": _as_iso_date(trade_date),
-            "fund": fund,
+            "fund": row_fund,
             "security": _flatten_text(security),
-            "side": side or None,
+            "side": normalized_side or None,
+            "raw_type": raw_side,
             "quantity": int(qty) if float(qty).is_integer() else qty,
             "price": price,
             "raw": row,

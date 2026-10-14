@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from income_fund_lab.chpy_daily_summary import compute_daily_trade_pnl, summarize_daily_positions
+from income_fund_lab.chpy_intraday_sqlite import ensure_schema, insert_records
 from income_fund_lab.collectors import (
     parse_chpy_holdings_csv,
     parse_chpy_trade_csv,
@@ -53,6 +55,99 @@ def test_chpy_trade_parsing():
     assert result["records"][0]["side"] == "buy"
     assert result["records"][1]["quantity"] == -25
     assert result["records"][1]["price"] == 154.20
+
+
+def test_live_chpy_intraday_csv_parsing():
+    csv_text = """Date,Fund,Ticker,Type,Qty/Par Value,Exec Price
+10/14/2026,CHPY,CBRS 261016C00167500,BC,1331,0.12
+10/14/2026,CHPY,CBRS 261016C00172500,S,1331,0.07
+10/14/2026,CHPY,INTC 261023C00102000,SS,6096,2.54
+10/14/2026,CHPY,INTC 261023C00102000,B,92,2.61
+"""
+    result = parse_chpy_trade_csv(csv_text)
+
+    assert result["fund"] == "CHPY"
+    assert len(result["records"]) == 4
+    assert result["records"][0]["trade_date"] == "2026-10-14"
+    assert result["records"][0]["side"] == "buy"
+    assert result["records"][1]["side"] == "sell"
+    assert result["records"][2]["side"] == "sell"
+    assert result["records"][3]["side"] == "buy"
+    assert result["records"][2]["quantity"] == -6096
+    assert result["records"][2]["price"] == 2.54
+
+
+def test_mixed_fund_intraday_rows_keep_their_own_fund_label():
+    csv_text = """Date,Fund,Ticker,Type,Qty/Par Value,Exec Price
+10/14/2026,TSLY,TSLA 261016C00392500,BC,2000,0.39
+10/14/2026,CHPY,CBRS 261016C00167500,BC,1331,0.12
+10/14/2026,CHPY,CBRS 261016C00172500,S,1331,0.07
+"""
+    result = parse_chpy_trade_csv(csv_text)
+
+    assert [row["fund"] for row in result["records"]] == ["TSLY", "CHPY", "CHPY"]
+    assert result["records"][1]["side"] == "buy"
+    assert result["records"][2]["quantity"] == -1331
+
+
+def test_sqlite_schema_supports_holdings_and_trades(tmp_path):
+    db_path = tmp_path / "holdings.sqlite3"
+    conn = __import__("sqlite3").connect(db_path)
+    ensure_schema(conn)
+
+    trades = [{
+        "trade_date": "2026-10-14",
+        "fund": "CHPY",
+        "security": "CBRS 261016C00167500",
+        "side": "buy",
+        "raw_type": "BC",
+        "quantity": 1331,
+        "price": 0.12,
+    }]
+    holdings = [{
+        "fund": "CHPY",
+        "source_as_of_date": "2026-10-14",
+        "security_name": "QUALCOMM Inc",
+        "ticker": "QCOM",
+        "CUSIP": "747525103",
+        "asset_type": "security",
+        "quantity": 201546,
+        "market_value": 35645425.56,
+        "portfolio_weight": 2.68,
+        "option_underlying": None,
+        "option_type": None,
+        "option_strike": None,
+        "option_expiration": None,
+    }]
+
+    assert insert_records(conn, trades, "https://example.com/trades", table_name="chpy_intraday_trades") == 1
+    assert insert_records(conn, holdings, "https://example.com/holdings", table_name="chpy_holdings_daily") == 1
+    assert conn.execute("SELECT COUNT(*) FROM chpy_intraday_trades").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM chpy_holdings_daily").fetchone()[0] == 1
+    conn.close()
+
+
+def test_daily_position_and_trade_pnl_summary():
+    trades = [
+        ("2026-10-14", "AAPL", "buy", 100, 10.00),
+        ("2026-10-14", "AAPL", "buy", 50, 12.00),
+        ("2026-10-14", "AAPL", "sell", -40, 15.00),
+        ("2026-10-15", "AAPL", "sell", -30, 16.00),
+    ]
+    holdings = [
+        ("2026-10-14", "AAPL", 80.0, 1280.0, 4.0),
+        ("2026-10-14", "MSFT", 50.0, 2500.0, 2.5),
+        ("2026-10-15", "AAPL", 50.0, 800.0, 3.2),
+    ]
+
+    pnl = compute_daily_trade_pnl(trades)
+    positions = summarize_daily_positions(holdings)
+
+    assert pnl["2026-10-14"]["AAPL"] == 200.0
+    assert pnl["2026-10-15"]["AAPL"] == 180.0
+    assert positions["2026-10-14"]["AAPL"]["total_quantity"] == 80.0
+    assert positions["2026-10-14"]["MSFT"]["total_quantity"] == 50.0
+    assert positions["2026-10-15"]["AAPL"]["total_quantity"] == 50.0
 
 
 def test_invalid_http_and_error_pages():

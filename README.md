@@ -4,6 +4,16 @@
 
 This project collects and archives the publicly disclosed holdings and trade data for the actively managed income ETFs USOY and CHPY. It is intentionally narrow: it does not produce analytics, dashboards, trading logic, or performance estimates. It focuses on reliable archival of original publisher files, traceable normalized records, and repeatable automation.
 
+## Future functionality
+With daily holdings snapshots plus intraday trades, we can calculate:
+- Options coverage: How much of each stock position is covered by short calls?
+- Net option exposure: What is the marked liability of outstanding spreads?
+- Roll profitability: How much did they originally collect, and how much did they pay to close each spread?
+- Premium efficiency: How much premium are they generating relative to the capital allocated?
+- NAV attribution: How much of the day's portfolio movement comes from stocks versus options?
+
+Are the managers collecting enough premium to make up for the upside they surrender—and are they actually keeping more of that premium than they lose managing their spreads?
+
 ## Architecture
 
 The application uses a small set of collectors that:
@@ -37,7 +47,7 @@ At the time of implementation, the live sources behaved as follows:
 
 - USOY full holdings renders as HTML and the page includes the full holdings table. The collector uses the published page as the source and preserves the original HTML.
 - CHPY holdings publishes an official CSV on the YieldMax site. The collector downloads the CSV directly and archives the original file.
-- CHPY intraday trade file currently returns HTTP 503 Maintenance from the publisher. The project treats this as a verified access blocker and records the failed source status without fabricating inaccessible data.
+- CHPY intraday transactions and daily holdings are collected into the same SQLite database. Each feed is attempted independently and every attempt is recorded.
 
 The GitHub Actions work is designed to archive successful sources even when one source fails, while still reporting a failed overall run if a required source fails.
 
@@ -55,6 +65,14 @@ The GitHub Actions work is designed to archive successful sources even when one 
 From the repository root:
 
 python -m income_fund_lab.collect
+
+The CHPY SQLite collector used by cron is:
+
+python -m income_fund_lab.chpy_intraday_sqlite
+
+Its default database is `data/chpy_intraday.sqlite3`, which is also the default used by `income_fund_lab.chpy_daily_summary`. To inspect collection provenance without fetching:
+
+python -m income_fund_lab.chpy_intraday_sqlite --audit
 
 The CLI prints a concise summary including the fund, source type, source date, number of records, archive path, and new/unchanged/failed status.
 
@@ -143,13 +161,13 @@ The project does not infer:
 
 If a value cannot be verified from the published source, it remains unknown and the raw source identifier is preserved.
 
-## Known failures or inaccessible downloads
+## CHPY SQLite provenance and revisions
 
-The current project intentionally documents the following verified limitation:
+Original CHPY response bytes are stored beneath `data/raw/chpy/` by feed and SHA-256. The raw file and its first-fetch metadata file are content-addressed, created without overwrite, and made read-only. SQLite records every collection run and per-feed result, including validation errors.
 
-- CHPY intraday trades are unavailable from the publisher endpoint at the time of collection because the server returns HTTP 503 Maintenance.
+Transaction rows retain source ordering and the publisher's original trade code. Row identity combines the raw-file hash and source row number, so genuinely repeated executions are preserved while an identical downloaded file is imported only once.
 
-This is a live source access blocker and not a fabricated or inferred failure.
+Distinct holdings files for one reported date are stored as versioned snapshots. Only the newest validated version is current; summaries read the current version instead of aggregating revisions together.
 
 ## What is collected now
 
@@ -157,7 +175,7 @@ This slice implements the first data-collection vertical, covering:
 
 - USOY holdings
 - CHPY holdings
-- CHPY intraday trades attempt and validation
+- CHPY intraday trades and daily holdings in SQLite with immutable source provenance
 
 It does not implement performance analysis, trade P&L, distribution analysis, or any web frontend.
 
@@ -168,6 +186,6 @@ The local development environment successfully verified:
 - offline fixture tests pass,
 - live USOY holdings download succeeds,
 - live CHPY holdings download succeeds,
-- CHPY intraday trades are blocked by a verified HTTP 503 response.
+- CHPY SQLite migrations preserve pre-existing rows and add provenance columns and tables.
 
 The scheduled GitHub Action is configured to continue archiving successful sources even if one required source fails, while still failing the job once the collection step reports a source error.
