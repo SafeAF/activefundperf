@@ -18,6 +18,8 @@ Are the managers collecting enough premium to make up for the upside they surren
 Report
    PYENV_VERSION=3.12.13 PYTHONPATH=src python -m income_fund_lab.chpy_report
 
+   PYENV_VERSION=3.12.13 PYTHONPATH=src python -m income_fund_lab.chpy_nav --history
+
 Cronjob
    */15 * * * * cd ~/source/activefundperf && /home/sam/.pyenv/versions/3.12.13/bin/python -m income_fund_lab.chpy_intraday_sqlite --db /home/sam/source/activefundperf/data/chpy_intraday.sqlite3 >> /tmp/chpy_intraday.log 2>&1
 

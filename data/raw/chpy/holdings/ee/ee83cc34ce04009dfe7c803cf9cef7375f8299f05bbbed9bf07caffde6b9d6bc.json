@@ -1,0 +1,10 @@
+{
+  "feed_type": "holdings",
+  "fetched_at_utc": "2026-10-17T05:30:04Z",
+  "record_count": 86,
+  "reported_source_date": "2026-10-19",
+  "sha256": "ee83cc34ce04009dfe7c803cf9cef7375f8299f05bbbed9bf07caffde6b9d6bc",
+  "source_url": "https://yieldmaxetfs.com/wp-content/uploads/funds/CHPY/TidalFG_Holdings_CHPY.csv",
+  "status": "validated",
+  "validation_errors": []
+}
