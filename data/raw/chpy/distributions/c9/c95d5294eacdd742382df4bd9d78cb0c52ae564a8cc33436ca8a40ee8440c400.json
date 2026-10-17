@@ -1,0 +1,10 @@
+{
+  "acquired_at_utc": "2026-10-17T15:14:17Z",
+  "feed_type": "distributions",
+  "first_ex_date": "2025-04-17",
+  "last_ex_date": "2026-10-14",
+  "record_count": 79,
+  "sha256": "c95d5294eacdd742382df4bd9d78cb0c52ae564a8cc33436ca8a40ee8440c400",
+  "source_url": "https://yieldmaxetfs.com/our-etfs/chpy/",
+  "status": "validated"
+}

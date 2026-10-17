@@ -20,6 +20,9 @@ Report
 
    PYENV_VERSION=3.12.13 PYTHONPATH=src python -m income_fund_lab.chpy_nav --history
 
+   PYENV_VERSION=3.12.13 PYTHONPATH=src \
+  python -m income_fund_lab.chpy_total_return --history
+
 Cronjob
    */15 * * * * cd ~/source/activefundperf && /home/sam/.pyenv/versions/3.12.13/bin/python -m income_fund_lab.chpy_intraday_sqlite --db /home/sam/source/activefundperf/data/chpy_intraday.sqlite3 >> /tmp/chpy_intraday.log 2>&1
 
@@ -41,6 +44,8 @@ Cronjob
  - Is CHPY making money on its options? Track each option position from opening to closing, expiration, exercise, or assignment, including adjustments along the way.
 
  - Is CHPY actually outperforming SMH? Compare their total returns, including reinvested distributions—not just their raw NAV changes.
+
+ - the option-profitability ledger, which is a different question: How much of the shareholder return is attributable to successful option trading versus underlying semiconductor appreciation or depreciation?
 
 
 ## Notes
