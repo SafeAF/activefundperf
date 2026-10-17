@@ -90,9 +90,24 @@ def main() -> None:
             for ticker, expiry, count, short_strike, long_strike in verticals
         ])
 
-    trade_date = conn.execute("SELECT max(trade_date) FROM chpy_intraday_trades").fetchone()[0]
+    latest_trade_sources = """
+        SELECT r.id, r.reported_source_date
+        FROM raw_sources r
+        WHERE r.feed_type='intraday_trades'
+          AND r.status='validated'
+          AND NOT EXISTS (
+              SELECT 1
+              FROM raw_sources newer
+              WHERE newer.feed_type=r.feed_type
+                AND newer.status=r.status
+                AND newer.reported_source_date=r.reported_source_date
+                AND (newer.fetched_at_utc > r.fetched_at_utc OR (newer.fetched_at_utc = r.fetched_at_utc AND newer.id > r.id))
+          )
+    """
+    trade_date = conn.execute(f"SELECT max(reported_source_date) FROM ({latest_trade_sources})").fetchone()[0]
     trades = conn.execute(
-        "SELECT * FROM chpy_intraday_trades WHERE trade_date=? ORDER BY source_row_number", (trade_date,)
+        f"SELECT t.* FROM chpy_intraday_trades t JOIN ({latest_trade_sources}) s ON s.id=t.raw_source_id "
+        "WHERE t.trade_date=? ORDER BY t.source_row_number", (trade_date,)
     ).fetchall() if trade_date else []
     totals = defaultdict(float)
     opening = defaultdict(float)
