@@ -14,6 +14,37 @@ With daily holdings snapshots plus intraday trades, we can calculate:
 
 Are the managers collecting enough premium to make up for the upside they surrender—and are they actually keeping more of that premium than they lose managing their spreads?
 
+## Running:
+Report
+   PYENV_VERSION=3.12.13 PYTHONPATH=src python -m income_fund_lab.chpy_report
+
+Cronjob
+   */15 * * * * cd ~/source/activefundperf && /home/sam/.pyenv/versions/3.12.13/bin/python -m income_fund_lab.chpy_intraday_sqlite --db /home/sam/source/activefundperf/data/chpy_intraday.sqlite3 >> /tmp/chpy_intraday.log 2>&1
+
+
+## Next things to add
+ - Reconcile the $968,237 NAV difference. Make it an explicit residual instead of silently treating it as zero.
+
+ - Track option lots through expiration. Associate executions by underlying, expiration, type, and strike, then account for settlements and assignments.
+
+ - Normalize share counts for creations/redemptions. The uniform 1% increase across stock holdings strongly suggests fund-level flows. Don't count those increases as stock-selection decisions.
+
+ - Measure actual strategy profitability by expiration cohort. Then compare that with distributions and NAV total return.
+
+ - Reconstructing a complete option cycle—opening transactions, adjustments, settlements, and final P&L
+
+ - daily call-coverage-by-underlying metric.
+
+## Goals 
+ - Is CHPY making money on its options? Track each option position from opening to closing, expiration, exercise, or assignment, including adjustments along the way.
+
+ - Is CHPY actually outperforming SMH? Compare their total returns, including reinvested distributions—not just their raw NAV changes.
+
+
+## Notes
+
+If NVDA, AMD, MRVL, and AVGO consistently remain uncovered while UMC, INTC, and other names are overwritten, that would provide much stronger evidence of deliberate upside preservation.
+
 ## Architecture
 
 The application uses a small set of collectors that:

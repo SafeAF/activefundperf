@@ -1,0 +1,10 @@
+{
+  "feed_type": "intraday_trades",
+  "fetched_at_utc": "2026-10-15T16:00:01Z",
+  "record_count": 50,
+  "reported_source_date": "2026-10-14",
+  "sha256": "2013cdf9477fd9f95927bda9be04240e648b7c377b9a6601fd7ff15c43534036",
+  "source_url": "https://yieldmaxetfs.com/ym/intraday-file",
+  "status": "validated",
+  "validation_errors": []
+}
